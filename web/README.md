@@ -111,54 +111,46 @@ domain. Key tables: `users`, `sessions`, `resellers`, `products`, `orders`,
 ## Cloudflare deployment
 
 Cloudflare deployment via the [`@opennextjs/cloudflare`](https://opennext.js.org/cloudflare)
-adapter is configured (`wrangler.jsonc`, `open-next.config.ts`) and **the
-build genuinely succeeds** — `npm run cf:build` produces a working Workers
-bundle, all 16 routes compile, TypeScript passes. This was tested for real,
-including a `--remote` preview on the actual Cloudflare network (not just
-local simulation), not just assumed from reading docs.
+adapter is configured (`wrangler.jsonc`, `open-next.config.ts`) and **fully
+working, verified against the real Neon database on the real Cloudflare
+network** — not just a successful build. `npm run cf:build` produces a
+working Workers bundle, all 16 routes compile, TypeScript passes, and
+`/api/health` returns `{"status":"ok","database":"connected"}` both from
+local `wrangler dev` and from `opennextjs-cloudflare preview --remote` on
+the live Cloudflare network (with a real request to `/login` served too).
 
-**There is one confirmed, real blocker: the database does not connect from
-Cloudflare Workers.** This was reproduced twice — once in local `wrangler
-dev`, once with `opennextjs-cloudflare preview --remote` on the real
-Cloudflare network with a live account — both times `/api/health` returned
-`{"status":"error","database":"unreachable"}` after a ~30s hang.
+**What the blocker actually was, and how it was fixed:** the `postgres` npm
+package ships a dedicated Cloudflare-Workers-compatible build (using the real
+`cloudflare:sockets` API) behind a `"workerd"` export condition in its
+`package.json`. Turbopack (Next's bundler) has no option to select an export
+condition, so `next build` was always resolving `postgres`'s default
+Node-oriented build — which has no real socket implementation on Workers —
+confirmed by grepping the built output for `cloudflare:sockets` and finding
+zero matches at every stage. The connection attempt just hung until timeout
+instead of failing fast.
 
-**Root cause, confirmed by inspecting the actual build output:** the
-`postgres` npm package ships a dedicated Cloudflare-Workers-compatible build
-(using the real `cloudflare:sockets` API) behind a `"workerd"` export
-condition in its `package.json`. But `next build` resolves and bundles
-`postgres` using ordinary Node module resolution *before* OpenNext's
-Cloudflare-specific bundling step ever runs — grepping the built output
-(`.next/server` and `.open-next/`) for `cloudflare:sockets` returns zero
-matches at every stage. The app silently gets the Node-oriented build, which
-has no real socket implementation on Workers, so the connection attempt just
-hangs until timeout instead of failing fast.
+The fix, in `next.config.ts`: Turbopack does support aliasing one import
+specifier straight to another file (`turbopack.resolveAlias`), so `postgres`
+is aliased directly to `postgres/cf/src/index.js` — the file behind that
+`workerd` condition — but **only** when `MLT_CLOUDFLARE_BUILD=1` is set (set
+by the `cf:build`/`cf:preview`/`cf:deploy` npm scripts via `cross-env`, not
+detected from `npm_lifecycle_event`, since `opennextjs-cloudflare build`
+internally re-invokes `npm run build` and that resets it back to `"build"`).
+The plain Node/Vercel build path is completely unaffected — verified with a
+clean `npm run build` after the change — since it still resolves `postgres`'s
+normal Node build, which is what a real Node server needs.
 
-This is a build-tooling/driver-resolution issue, not a logic bug, and it has
-two known real fixes — deliberately not applied blind, since both touch
-either the build pipeline or the semantics of every `db.transaction()` call
-site (payment verification, order creation, shipment updates — code where a
-subtly wrong fix has real financial consequences):
-
-1. **Force Next's bundler to resolve `postgres` via its `workerd` condition**
-   instead of the default Node one. More surgical (no code changes, no
-   transaction-semantics risk), but requires custom Turbopack/webpack
-   resolve-condition configuration that isn't well-documented for this exact
-   combination (Next 16 + Turbopack + OpenNext) — needs research/trial, not
-   guessing.
-2. **Switch the driver to `@neondatabase/serverless` + `drizzle-orm/neon-http`**
-   — Neon's own officially documented HTTP-based driver for exactly this
-   scenario (edge/Workers runtimes with no raw TCP). Well-trodden path, but
-   its `db.transaction()` batches all statements into one HTTP call rather
-   than true sequential round-trips — every existing transaction (in
-   `lib/actions/orders.ts` especially) would need re-verification that this
-   still does what it currently does before shipping it.
-
-Either is a scoped, half-day-ish task with a clear success test (the same
-`/api/health` check used to diagnose this). Recommend option 2 as the
-industry-standard path for Neon+Workers, done as its own reviewed change
-given the financial-code surface area it touches — not bundled into a
-"deployment audit" pass.
+One thing worth flagging honestly: an earlier pass in this document
+recommended, as a fallback, switching the driver to
+`@neondatabase/serverless` + `drizzle-orm/neon-http` if the Turbopack fix
+didn't pan out. Before attempting that, the actual `drizzle-orm/neon-http`
+session implementation was read directly (not assumed) — its `.transaction()`
+doesn't "batch statements into one HTTP call" as originally guessed, it
+**throws `"No transactions support in neon-http driver"` outright**. Every
+`db.transaction()` call in `lib/actions/orders.ts` and `lib/actions/users.ts`
+would have broken at runtime, not just changed semantics — a much bigger and
+riskier change than documented here previously. Good thing the Turbopack
+alias fix worked, since it required zero changes to any transactional code.
 
 The other two risks flagged in an earlier pass turned out to be non-issues
 once actually tested:
@@ -179,7 +171,7 @@ npm run cf:preview               # runs it locally under workerd
 npx opennextjs-cloudflare preview --remote   # runs it on the real Cloudflare network
 ```
 
-### Deploying for real (once the DB driver issue above is resolved)
+### Deploying for real
 
 ```bash
 npm run cf:deploy
@@ -188,7 +180,11 @@ npm run cf:deploy
 Or connect the GitHub repo in the Cloudflare dashboard (Workers & Pages →
 Create → connect to Git) for auto-deploy on push to `main`. Either way,
 production secrets are set via `wrangler secret put DATABASE_URL` (and any
-others in `.env.example`) — never via a committed file.
+others in `.env.example`) — never via a committed file. **Note:** if
+connecting via the Cloudflare dashboard's Git integration, its build command
+must run `npm run cf:build` (or set `MLT_CLOUDFLARE_BUILD=1` before its own
+build step) — a plain `next build` invoked by the dashboard without that
+env var would silently regress to the broken Node `postgres` build.
 
 ## Known gaps (honest, not hidden)
 

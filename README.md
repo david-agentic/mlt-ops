@@ -92,20 +92,20 @@ natural next step here.
 
 ## Deployment status
 
-Not yet deployed anywhere. The app deploys cleanly to any standard Next.js
-host (Vercel, Node server, etc.) with no adapter needed — confirmed via a
-full `next build`.
+Not yet deployed anywhere, but both deployment targets are configured and
+verified end-to-end:
 
-**Cloudflare Workers deployment is configured** (`@opennextjs/cloudflare`,
-`wrangler.jsonc`) and the build genuinely succeeds, tested for real
-including on the live Cloudflare network — but there is **one confirmed
-blocker**: the database does not connect from a Workers runtime. Root cause
-is understood precisely (the `postgres` driver resolves its Node-only build
-instead of its Workers-compatible one during Next's own build step). Two
-real fixes are identified but deliberately not applied blind, since both
-touch financially-sensitive transaction code. Full details, evidence, and
-the exact fix options are in `web/README.md`'s "Cloudflare deployment"
-section.
+- **Standard Next.js host** (Vercel, Node server, etc.) — no adapter needed,
+  confirmed via a full `next build`.
+- **Cloudflare Workers** (`@opennextjs/cloudflare`, `wrangler.jsonc`) —
+  build succeeds and the database connects for real. This was previously
+  blocked (the `postgres` driver was resolving its Node-only build instead
+  of its Workers-compatible `workerd` build during Next's own build step);
+  fixed via a scoped Turbopack `resolveAlias` in `next.config.ts` that only
+  applies to Cloudflare builds. Verified with `/api/health` returning a real
+  DB connection on both local `wrangler dev` and a real-network
+  `opennextjs-cloudflare preview --remote`. Full details in `web/README.md`'s
+  "Cloudflare deployment" section.
 
 ## Documentation
 
