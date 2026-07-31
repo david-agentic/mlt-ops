@@ -1,9 +1,12 @@
 "use client";
 
 import { type ColumnDef } from "@tanstack/react-table";
+import { Badge } from "@/components/ui/badge";
 import { DataTable } from "@/components/data-table";
+import { ToggleActiveButton } from "@/components/toggle-active-button";
 import { ResellerDialog } from "./reseller-dialog";
 import { CreateLoginDialog } from "./create-login-dialog";
+import { toggleResellerActive } from "@/lib/actions/resellers";
 import type { Reseller } from "@/db/schema";
 
 const columns: ColumnDef<Reseller>[] = [
@@ -26,6 +29,15 @@ const columns: ColumnDef<Reseller>[] = [
     cell: ({ row }) => row.original.phone || "—",
   },
   {
+    accessorKey: "active",
+    header: "Status",
+    cell: ({ row }) => (
+      <Badge variant={row.original.active ? "default" : "outline"}>
+        {row.original.active ? "Active" : "Inactive"}
+      </Badge>
+    ),
+  },
+  {
     id: "actions",
     header: () => <span className="sr-only">Actions</span>,
     cell: ({ row }) => (
@@ -35,6 +47,12 @@ const columns: ColumnDef<Reseller>[] = [
           resellerName={row.original.companyName}
         />
         <ResellerDialog reseller={row.original} />
+        <ToggleActiveButton
+          id={row.original.id}
+          active={row.original.active}
+          entityLabel="Reseller"
+          onToggle={toggleResellerActive}
+        />
       </div>
     ),
   },

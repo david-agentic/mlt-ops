@@ -3,7 +3,7 @@ import { cookies } from "next/headers";
 import { randomBytes } from "crypto";
 import { eq } from "drizzle-orm";
 import { db } from "@/db";
-import { sessions, users } from "@/db/schema";
+import { sessions, users, resellers } from "@/db/schema";
 import { config } from "@/lib/config";
 
 const SESSION_COOKIE_NAME = config.sessionCookieName;
@@ -59,16 +59,21 @@ export async function getCurrentUser(): Promise<SessionUser | null> {
       role: users.role,
       resellerId: users.resellerId,
       active: users.active,
+      resellerActive: resellers.active,
       expiresAt: sessions.expiresAt,
     })
     .from(sessions)
     .innerJoin(users, eq(sessions.userId, users.id))
+    .leftJoin(resellers, eq(users.resellerId, resellers.id))
     .where(eq(sessions.id, token))
     .limit(1);
 
   const row = rows[0];
   if (!row) return null;
   if (row.expiresAt < new Date() || !row.active) return null;
+  // A reseller-role user whose company account has been deactivated loses
+  // access even if their individual login is still marked active.
+  if (row.role === "reseller" && row.resellerActive === false) return null;
 
   return {
     id: row.id,

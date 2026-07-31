@@ -33,7 +33,7 @@ export function GoalProgress({ goal, shippedToday }: { goal: number; shippedToda
     <Card>
       <CardHeader className="flex flex-row items-center justify-between">
         <CardTitle className="flex items-center gap-1.5 text-sm">
-          <Target className="size-4" /> Today's Goal
+          <Target className="size-4" /> Today&apos;s Goal
         </CardTitle>
         {!editing && (
           <Button variant="ghost" size="icon-sm" onClick={() => setEditing(true)}>

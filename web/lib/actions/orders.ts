@@ -1,6 +1,6 @@
 "use server";
 
-import { desc, eq, inArray, sql } from "drizzle-orm";
+import { and, desc, eq, inArray, sql } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { db } from "@/db";
@@ -40,11 +40,38 @@ export async function createOrder(items: OrderItemInput[]) {
 
   const productMap = new Map(productRows.map((p) => [p.id, p]));
 
+  const [reservedRows] = await Promise.all([
+    db
+      .select({
+        productId: orderItems.productId,
+        reserved: sql<number>`coalesce(sum(${orderItems.quantity}), 0)::int`,
+      })
+      .from(orderItems)
+      .innerJoin(orders, eq(orderItems.orderId, orders.id))
+      .where(
+        and(
+          inArray(orderItems.productId, productIds),
+          inArray(orders.status, ["payment_verified", "packed"]),
+        ),
+      )
+      .groupBy(orderItems.productId),
+  ]);
+  const reservedMap = new Map(reservedRows.map((r) => [r.productId, r.reserved]));
+
   let total = 0;
   const lineItems = items.map(({ productId, quantity }) => {
+    if (!Number.isInteger(quantity) || quantity <= 0) {
+      throw new Error("Quantity must be a positive whole number.");
+    }
     const product = productMap.get(productId);
     if (!product || !product.active) {
       throw new Error("One or more products are no longer available.");
+    }
+    const available = product.stockOnHand - (reservedMap.get(productId) ?? 0);
+    if (quantity > available) {
+      throw new Error(
+        `Only ${Math.max(available, 0)} unit(s) of "${product.name}" are available right now.`,
+      );
     }
     const unitPrice = Number(product.unitPrice);
     const lineTotal = unitPrice * quantity;

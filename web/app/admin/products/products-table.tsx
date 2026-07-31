@@ -6,7 +6,8 @@ import { Badge } from "@/components/ui/badge";
 import { DataTable } from "@/components/data-table";
 import { formatMoney } from "@/lib/format";
 import { ProductDialog } from "./product-dialog";
-import { ToggleActiveButton } from "./toggle-active-button";
+import { ToggleActiveButton } from "@/components/toggle-active-button";
+import { toggleProductActive } from "@/lib/actions/products";
 import type { Product } from "@/db/schema";
 
 const columns: ColumnDef<Product>[] = [
@@ -60,7 +61,12 @@ const columns: ColumnDef<Product>[] = [
     cell: ({ row }) => (
       <div className="flex justify-end gap-2">
         <ProductDialog product={row.original} />
-        <ToggleActiveButton id={row.original.id} active={row.original.active} />
+        <ToggleActiveButton
+          id={row.original.id}
+          active={row.original.active}
+          entityLabel="Product"
+          onToggle={toggleProductActive}
+        />
       </div>
     ),
   },

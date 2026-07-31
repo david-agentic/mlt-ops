@@ -22,7 +22,7 @@ export function TeamWorkload({
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="text-sm">Today's Team Load</CardTitle>
+        <CardTitle className="text-sm">Today&apos;s Team Load</CardTitle>
       </CardHeader>
       <CardContent className="flex flex-col gap-4">
         {rows.map((row) => (

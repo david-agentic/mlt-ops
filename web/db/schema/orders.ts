@@ -7,7 +7,9 @@ import {
   timestamp,
   uuid,
   index,
+  check,
 } from "drizzle-orm/pg-core";
+import { sql } from "drizzle-orm";
 import { resellers } from "./resellers";
 import { users } from "./auth";
 import { products } from "./catalog";
@@ -50,6 +52,7 @@ export const orders = pgTable(
   (table) => [
     index("orders_reseller_id_idx").on(table.resellerId),
     index("orders_status_idx").on(table.status),
+    check("orders_total_amount_non_negative", sql`${table.totalAmount} >= 0`),
   ],
 );
 
@@ -67,7 +70,12 @@ export const orderItems = pgTable(
     unitPrice: numeric("unit_price", { precision: 12, scale: 2 }).notNull(),
     lineTotal: numeric("line_total", { precision: 12, scale: 2 }).notNull(),
   },
-  (table) => [index("order_items_order_id_idx").on(table.orderId)],
+  (table) => [
+    index("order_items_order_id_idx").on(table.orderId),
+    check("order_items_quantity_positive", sql`${table.quantity} > 0`),
+    check("order_items_unit_price_non_negative", sql`${table.unitPrice} >= 0`),
+    check("order_items_line_total_non_negative", sql`${table.lineTotal} >= 0`),
+  ],
 );
 
 export const paymentProofs = pgTable(
@@ -86,7 +94,10 @@ export const paymentProofs = pgTable(
     submittedAt: timestamp("submitted_at").defaultNow().notNull(),
     notes: text("notes"),
   },
-  (table) => [index("payment_proofs_order_id_idx").on(table.orderId)],
+  (table) => [
+    index("payment_proofs_order_id_idx").on(table.orderId),
+    check("payment_proofs_amount_claimed_non_negative", sql`${table.amountClaimed} >= 0`),
+  ],
 );
 
 export const FINANCE_NOTE_TYPES = ["note", "hold", "escalate"] as const;
@@ -127,7 +138,10 @@ export const paymentVerifications = pgTable(
     verifiedAt: timestamp("verified_at").defaultNow().notNull(),
     notes: text("notes"),
   },
-  (table) => [index("payment_verifications_order_id_idx").on(table.orderId)],
+  (table) => [
+    index("payment_verifications_order_id_idx").on(table.orderId),
+    check("payment_verifications_amount_non_negative", sql`${table.verifiedAmount} >= 0`),
+  ],
 );
 
 export const shipments = pgTable(
@@ -146,7 +160,10 @@ export const shipments = pgTable(
     dispatchedAt: timestamp("dispatched_at"),
     deliveredAt: timestamp("delivered_at"),
   },
-  (table) => [index("shipments_order_id_idx").on(table.orderId)],
+  (table) => [
+    index("shipments_order_id_idx").on(table.orderId),
+    check("shipments_weight_non_negative", sql`${table.weightKg} is null or ${table.weightKg} >= 0`),
+  ],
 );
 
 export type Order = typeof orders.$inferSelect;

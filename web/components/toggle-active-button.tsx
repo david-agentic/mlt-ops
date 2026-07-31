@@ -3,15 +3,19 @@
 import { useTransition } from "react";
 import { Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { toggleProductActive } from "@/lib/actions/products";
 import { toast } from "sonner";
 
 export function ToggleActiveButton({
   id,
   active,
+  entityLabel,
+  onToggle,
 }: {
   id: string;
   active: boolean;
+  /** Shown in the success toast, e.g. "Product", "Reseller", "User" */
+  entityLabel: string;
+  onToggle: (id: string, active: boolean) => Promise<void>;
 }) {
   const [pending, startTransition] = useTransition();
 
@@ -22,8 +26,12 @@ export function ToggleActiveButton({
       disabled={pending}
       onClick={() =>
         startTransition(async () => {
-          await toggleProductActive(id, !active);
-          toast.success(active ? "Product deactivated." : "Product activated.");
+          try {
+            await onToggle(id, !active);
+            toast.success(`${entityLabel} ${active ? "deactivated" : "activated"}.`);
+          } catch (err) {
+            toast.error(err instanceof Error ? err.message : "Something went wrong.");
+          }
         })
       }
     >

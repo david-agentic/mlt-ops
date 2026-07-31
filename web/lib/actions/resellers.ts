@@ -54,6 +54,14 @@ export async function updateReseller(id: string, formData: FormData) {
   revalidatePath("/admin/resellers");
 }
 
+export async function toggleResellerActive(id: string, active: boolean) {
+  await requireRole("admin");
+
+  await db.update(resellers).set({ active }).where(eq(resellers.id, id));
+
+  revalidatePath("/admin/resellers");
+}
+
 export type CreateResellerUserState = { error?: string; success?: string };
 
 export async function createResellerUser(

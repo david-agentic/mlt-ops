@@ -20,7 +20,7 @@ export function DataTable<TData>({
   data,
   emptyMessage = "No records yet.",
 }: {
-  columns: ColumnDef<TData, any>[];
+  columns: ColumnDef<TData, unknown>[];
   data: TData[];
   emptyMessage?: string;
 }) {

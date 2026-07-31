@@ -50,7 +50,7 @@ export default async function AdminDashboardPage() {
         <h1 className="text-xl font-semibold tracking-tight">
           {greetingForTime()}, {firstName}.
         </h1>
-        <p className="text-sm text-muted-foreground">Here's how the business looks.</p>
+        <p className="text-sm text-muted-foreground">Here&apos;s how the business looks.</p>
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">

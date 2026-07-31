@@ -21,3 +21,10 @@ export async function verifyPassword(
   if (derivedKey.length !== keyBuffer.length) return false;
   return timingSafeEqual(derivedKey, keyBuffer);
 }
+
+/**
+ * A syntactically valid but unusable hash (random salt, random key) used to
+ * make the "no such user" login path do the same scrypt work as the "wrong
+ * password" path, so response timing can't be used to enumerate accounts.
+ */
+export const DUMMY_PASSWORD_HASH = `${randomBytes(16).toString("hex")}:${randomBytes(KEY_LENGTH).toString("hex")}`;
