@@ -1,0 +1,6 @@
+# Local secrets for `wrangler dev` / `npm run cf:preview` (Cloudflare Workers
+# local dev). Copy to `.dev.vars` and fill in real values. This is SEPARATE
+# from `.env.local` (which only the plain `next dev`/`next start` path
+# reads) — Wrangler does not read `.env.local`.
+DATABASE_URL="postgresql://user:password@host/dbname?sslmode=require"
+SESSION_COOKIE_NAME="mlt_session"

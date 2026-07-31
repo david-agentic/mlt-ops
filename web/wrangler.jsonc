@@ -1,0 +1,22 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "mlt-ops-web",
+  "main": ".open-next/worker.js",
+  "compatibility_date": "2026-07-31",
+  "compatibility_flags": ["nodejs_compat"],
+  "assets": {
+    "directory": ".open-next/assets",
+    "binding": "ASSETS"
+  },
+  "observability": {
+    "enabled": true
+  },
+  // Password hashing (crypto.scrypt) is deliberately CPU-intensive and can
+  // exceed the platform default CPU-time budget on the Workers Free plan.
+  // This raises the ceiling; it requires a Workers Paid plan to take effect
+  // (the Free plan caps at 10ms regardless of this setting) — see
+  // README's "Cloudflare deployment" section.
+  "limits": {
+    "cpu_ms": 50000
+  }
+}

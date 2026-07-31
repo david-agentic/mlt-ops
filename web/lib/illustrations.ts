@@ -1,15 +1,19 @@
-import "server-only";
-import { existsSync } from "fs";
-import path from "path";
-
 /**
- * Resolves an illustration filename to a public URL if it has been
- * downloaded, or null otherwise. Server Components only -- never import
- * this from a "use client" file, since `fs` cannot be bundled for the
- * browser. Client components that need an illustration must receive the
- * resolved URL as a prop from their parent Server Component.
+ * Registry of illustration files that have actually been downloaded into
+ * public/illustrations/. Add a filename here once the real file exists.
+ *
+ * Deliberately NOT implemented with a runtime fs.existsSync check: that
+ * approach doesn't work on Cloudflare Workers (no Node-style filesystem
+ * access to public/, even with the nodejs_compat flag), so this stays a
+ * plain constant that works identically on any runtime (Node, Workers,
+ * edge). No "server-only" restriction needed either, for the same reason —
+ * safe to import from both Server and Client Components.
  */
+const KNOWN_ILLUSTRATIONS = new Set<string>([
+  // "empty-orders.svg",
+  // "empty-finance.svg",
+]);
+
 export function illustrationPath(name: string): string | null {
-  const filePath = path.join(process.cwd(), "public", "illustrations", name);
-  return existsSync(filePath) ? `/illustrations/${name}` : null;
+  return KNOWN_ILLUSTRATIONS.has(name) ? `/illustrations/${name}` : null;
 }

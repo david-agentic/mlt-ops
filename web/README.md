@@ -108,34 +108,87 @@ domain. Key tables: `users`, `sessions`, `resellers`, `products`, `orders`,
 - Soft-delete only: no table has a hard-delete path exposed anywhere in the
   app. Products, resellers, and users all use an `active` boolean instead.
 
-## Cloudflare deployment — read before attempting
+## Cloudflare deployment
 
-This app currently targets standard Node.js hosting (e.g. Vercel), which
-works with zero adapter configuration. **Deploying to Cloudflare Workers has
-not been attempted or configured** — there is no `wrangler.jsonc` or
-OpenNext config for this app (the only `wrangler.jsonc` in the repo belongs
-to the unused `api/` scaffold, not this app). Two specific things would need
-verifying before it's safe to try:
+Cloudflare deployment via the [`@opennextjs/cloudflare`](https://opennext.js.org/cloudflare)
+adapter is configured (`wrangler.jsonc`, `open-next.config.ts`) and **the
+build genuinely succeeds** — `npm run cf:build` produces a working Workers
+bundle, all 16 routes compile, TypeScript passes. This was tested for real,
+including a `--remote` preview on the actual Cloudflare network (not just
+local simulation), not just assumed from reading docs.
 
-1. **`crypto.scrypt` CPU cost.** Password hashing in `lib/auth/password.ts`
-   uses Node's `crypto.scrypt`, which is deliberately slow. Cloudflare
-   Workers enforce a per-request CPU time budget; whether scrypt at this
-   project's cost parameters fits that budget depends on the Workers plan
-   and hasn't been measured against a real Workers runtime.
-2. **`lib/illustrations.ts` uses `fs.existsSync`** to check whether an
-   illustration file has been downloaded. Cloudflare Workers have no
-   Node-style filesystem access to `public/`, even with the `nodejs_compat`
-   flag — this check would need to be replaced with a build-time manifest
-   (a static list of available filenames) instead of a runtime `fs` call.
-   Low risk today only because no illustration files exist yet, so this
-   code path always returns "not found" regardless of environment.
+**There is one confirmed, real blocker: the database does not connect from
+Cloudflare Workers.** This was reproduced twice — once in local `wrangler
+dev`, once with `opennextjs-cloudflare preview --remote` on the real
+Cloudflare network with a live account — both times `/api/health` returned
+`{"status":"error","database":"unreachable"}` after a ~30s hang.
 
-Both are fixable, but deliberately not touched blind — fixing them requires
-either a live Cloudflare account to measure against, or accepting a rewrite
-with no way to verify it actually works. If Cloudflare hosting is required,
-treat that as its own scoped task: install `@opennextjs/cloudflare`,
-generate the Workers config, and resolve the two items above before or
-during that work — not by guessing at config now.
+**Root cause, confirmed by inspecting the actual build output:** the
+`postgres` npm package ships a dedicated Cloudflare-Workers-compatible build
+(using the real `cloudflare:sockets` API) behind a `"workerd"` export
+condition in its `package.json`. But `next build` resolves and bundles
+`postgres` using ordinary Node module resolution *before* OpenNext's
+Cloudflare-specific bundling step ever runs — grepping the built output
+(`.next/server` and `.open-next/`) for `cloudflare:sockets` returns zero
+matches at every stage. The app silently gets the Node-oriented build, which
+has no real socket implementation on Workers, so the connection attempt just
+hangs until timeout instead of failing fast.
+
+This is a build-tooling/driver-resolution issue, not a logic bug, and it has
+two known real fixes — deliberately not applied blind, since both touch
+either the build pipeline or the semantics of every `db.transaction()` call
+site (payment verification, order creation, shipment updates — code where a
+subtly wrong fix has real financial consequences):
+
+1. **Force Next's bundler to resolve `postgres` via its `workerd` condition**
+   instead of the default Node one. More surgical (no code changes, no
+   transaction-semantics risk), but requires custom Turbopack/webpack
+   resolve-condition configuration that isn't well-documented for this exact
+   combination (Next 16 + Turbopack + OpenNext) — needs research/trial, not
+   guessing.
+2. **Switch the driver to `@neondatabase/serverless` + `drizzle-orm/neon-http`**
+   — Neon's own officially documented HTTP-based driver for exactly this
+   scenario (edge/Workers runtimes with no raw TCP). Well-trodden path, but
+   its `db.transaction()` batches all statements into one HTTP call rather
+   than true sequential round-trips — every existing transaction (in
+   `lib/actions/orders.ts` especially) would need re-verification that this
+   still does what it currently does before shipping it.
+
+Either is a scoped, half-day-ish task with a clear success test (the same
+`/api/health` check used to diagnose this). Recommend option 2 as the
+industry-standard path for Neon+Workers, done as its own reviewed change
+given the financial-code surface area it touches — not bundled into a
+"deployment audit" pass.
+
+The other two risks flagged in an earlier pass turned out to be non-issues
+once actually tested:
+- `crypto.scrypt`'s CPU cost was never reached — the request fails at the
+  DB layer first. Once the DB issue above is fixed, this needs re-testing;
+  `wrangler.jsonc` already raises `limits.cpu_ms` to 50000 as a preemptive
+  mitigation (only takes effect on a Workers Paid plan).
+- `lib/illustrations.ts`'s `fs.existsSync` call has been removed entirely
+  (replaced with a plain in-code registry) — this was a real issue and is
+  now fully fixed, not just documented.
+
+### Local Cloudflare testing
+
+```bash
+cp .dev.vars.example .dev.vars   # wrangler reads this, NOT .env.local
+npm run cf:build                # real production build via OpenNext
+npm run cf:preview               # runs it locally under workerd
+npx opennextjs-cloudflare preview --remote   # runs it on the real Cloudflare network
+```
+
+### Deploying for real (once the DB driver issue above is resolved)
+
+```bash
+npm run cf:deploy
+```
+
+Or connect the GitHub repo in the Cloudflare dashboard (Workers & Pages →
+Create → connect to Git) for auto-deploy on push to `main`. Either way,
+production secrets are set via `wrangler secret put DATABASE_URL` (and any
+others in `.env.example`) — never via a committed file.
 
 ## Known gaps (honest, not hidden)
 
