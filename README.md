@@ -29,7 +29,9 @@ Four portals sharing one login system and one database, each scoped to a role:
 - **Admin** — Mission Control dashboard (business health, revenue, cash
   expected, today's shipping goal, live activity feed, alerts), order
   management, product intelligence (stock/margin/trend per product), reseller
-  management, team/staff account management, order timeline detail view.
+  management, team/staff account management (temporary-password or
+  email-invite creation, edit, enable/disable, soft delete, forced
+  password change), a security audit log, order timeline detail view.
 - **Reseller** — browse catalog, place orders, upload payment proof, track
   order status.
 - **Finance** — a full "Finance Desk" per order: payment proof, claimed vs.
@@ -46,8 +48,10 @@ Four portals sharing one login system and one database, each scoped to a role:
 - **shadcn/ui** (Base UI primitives) + **Tailwind CSS v4** + **Framer Motion**
 - **React Hook Form + Zod** for forms/validation
 - **TanStack Table** for data grids
-- Custom cookie-session authentication (scrypt password hashing, no
-  third-party auth provider)
+- Custom cookie-session authentication: scrypt password hashing, Postgres
+  -backed login lockout, self-service password reset and email invitations
+  (Resend), full admin user management, and a security audit log — no
+  third-party auth provider
 - **Vitest** for unit tests
 
 ## Getting started
@@ -99,13 +103,15 @@ natural next step here.
   real blocker (the `postgres` driver resolving its Node-only build instead
   of its Workers-compatible `workerd` build) was found and genuinely fixed.
   But deploying live to test that fix surfaced a **second, different, still
-  unresolved** issue: roughly half of all requests fail with a database
-  connection error under real Cloudflare production traffic, even though
-  the same connection works 100% of the time from a local script and from
-  Cloudflare's own preview tooling. Root cause not yet confirmed — see
+  unresolved** database-connectivity issue — worse than first thought: single
+  -query requests fail intermittently (~50%), and any request that runs more
+  than one sequential query (i.e. essentially every real login or mutation)
+  fails **100% of the time**, even though the same queries succeed reliably
+  from a local script outside Cloudflare. Root cause not yet confirmed — see
   `web/README.md`'s "Cloudflare deployment" section for exactly what's been
-  ruled out and what the leading hypothesis is. **Do not use the Cloudflare
-  path yet; use Vercel/Node.**
+  ruled out. **Do not use the Cloudflare path; use Vercel/Node** — every flow
+  in the app, including the full authentication system, is verified working
+  end-to-end there.
 
 ## Documentation
 

@@ -1,4 +1,4 @@
-import { requireRole } from "@/lib/auth/guard";
+import { requireRole, redirectIfMustChangePassword } from "@/lib/auth/guard";
 import { PortalShell } from "@/components/portal-shell";
 
 const NAV = [
@@ -12,6 +12,7 @@ export default async function ResellerLayout({
   children: React.ReactNode;
 }) {
   const user = await requireRole("reseller");
+  redirectIfMustChangePassword(user);
 
   return (
     <PortalShell user={user} title="Reseller" nav={NAV}>

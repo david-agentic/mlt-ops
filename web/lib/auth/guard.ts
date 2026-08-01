@@ -17,3 +17,19 @@ export async function requireRole(
   if (user.role !== role) redirect(PORTAL_HOME[user.role]);
   return user;
 }
+
+/** Any authenticated user, regardless of role — for account-level pages
+ * (change password) that every portal's users need access to. */
+export async function requireUser(): Promise<SessionUser> {
+  const user = await getCurrentUser();
+  if (!user) redirect("/login");
+  return user;
+}
+
+/** Called from each portal layout after requireRole() — forces a user
+ * flagged mustChangePassword (new admin-created accounts, admin-triggered
+ * resets, self-service resets) to set their own password before reaching
+ * any portal page. */
+export function redirectIfMustChangePassword(user: SessionUser) {
+  if (user.mustChangePassword) redirect("/account/change-password");
+}

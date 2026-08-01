@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { LogOut } from "lucide-react";
+import { LogOut, KeyRound } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { logoutAction } from "@/lib/actions/auth";
@@ -40,6 +40,16 @@ export function PortalShell({
         </div>
         <div className="flex items-center gap-3">
           <span className="text-sm text-muted-foreground">{user.name}</span>
+          <Button
+            variant="ghost"
+            size="icon-sm"
+            nativeButton={false}
+            render={
+              <Link href="/account/change-password" title="Change password">
+                <KeyRound />
+              </Link>
+            }
+          />
           <ThemeToggle />
           <form action={logoutAction}>
             <Button type="submit" variant="ghost" size="icon-sm">

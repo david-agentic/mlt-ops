@@ -1,17 +1,19 @@
-import { desc, ne } from "drizzle-orm";
+import { desc, ne, and, isNull } from "drizzle-orm";
 import { db } from "@/db";
 import { users } from "@/db/schema";
 import { Badge } from "@/components/ui/badge";
 import { ToggleActiveButton } from "@/components/toggle-active-button";
 import { CreateStaffDialog } from "./create-staff-dialog";
 import { ResetPasswordDialog } from "./reset-password-dialog";
+import { EditUserDialog } from "./edit-user-dialog";
+import { DeleteUserButton } from "./delete-user-button";
 import { toggleUserActive } from "@/lib/actions/users";
 
 export default async function AdminTeamPage() {
   const staff = await db
     .select()
     .from(users)
-    .where(ne(users.role, "reseller"))
+    .where(and(ne(users.role, "reseller"), isNull(users.deletedAt)))
     .orderBy(desc(users.createdAt));
 
   return (
@@ -48,19 +50,35 @@ export default async function AdminTeamPage() {
                   </Badge>
                 </td>
                 <td className="px-4 py-2">
-                  <Badge variant={u.active ? "default" : "outline"}>
-                    {u.active ? "Active" : "Inactive"}
-                  </Badge>
+                  <div className="flex flex-wrap gap-1.5">
+                    <Badge variant={u.active ? "default" : "outline"}>
+                      {u.active ? "Active" : "Inactive"}
+                    </Badge>
+                    {u.mustChangePassword && (
+                      <Badge variant="outline">Must set password</Badge>
+                    )}
+                  </div>
                 </td>
                 <td className="px-4 py-2">
-                  <div className="flex justify-end gap-2">
+                  <div className="flex flex-wrap justify-end gap-2">
+                    <EditUserDialog
+                      userId={u.id}
+                      name={u.name}
+                      email={u.email}
+                      role={u.role as "admin" | "finance" | "shipping"}
+                    />
                     <ResetPasswordDialog userId={u.id} name={u.name} />
                     <ToggleActiveButton
                       id={u.id}
                       active={u.active}
                       entityLabel="User"
-                      onToggle={toggleUserActive}
+                      onToggle={async (id, active) => {
+                        "use server";
+                        const result = await toggleUserActive(id, active);
+                        if (result.error) throw new Error(result.error);
+                      }}
                     />
+                    <DeleteUserButton userId={u.id} name={u.name} />
                   </div>
                 </td>
               </tr>

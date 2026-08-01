@@ -36,7 +36,8 @@ export function ResetPasswordDialog({ userId, name }: { userId: string; name: st
         <DialogHeader>
           <DialogTitle>Reset password for {name}</DialogTitle>
           <DialogDescription>
-            This signs them out everywhere. Share the new password securely.
+            This signs them out everywhere and requires them to set a new password on
+            next login. Share this temporary password securely.
           </DialogDescription>
         </DialogHeader>
         <form action={formAction} className="flex flex-col gap-4">
@@ -46,7 +47,7 @@ export function ResetPasswordDialog({ userId, name }: { userId: string; name: st
               id={`newPassword-${userId}`}
               name="password"
               type="text"
-              minLength={8}
+              minLength={12}
               required
             />
           </div>
