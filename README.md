@@ -92,20 +92,20 @@ natural next step here.
 
 ## Deployment status
 
-Not yet deployed anywhere, but both deployment targets are configured and
-verified end-to-end:
-
-- **Standard Next.js host** (Vercel, Node server, etc.) — no adapter needed,
-  confirmed via a full `next build`.
-- **Cloudflare Workers** (`@opennextjs/cloudflare`, `wrangler.jsonc`) —
-  build succeeds and the database connects for real. This was previously
-  blocked (the `postgres` driver was resolving its Node-only build instead
-  of its Workers-compatible `workerd` build during Next's own build step);
-  fixed via a scoped Turbopack `resolveAlias` in `next.config.ts` that only
-  applies to Cloudflare builds. Verified with `/api/health` returning a real
-  DB connection on both local `wrangler dev` and a real-network
-  `opennextjs-cloudflare preview --remote`. Full details in `web/README.md`'s
-  "Cloudflare deployment" section.
+- **Standard Next.js host** (Vercel, Node server, etc.) — fully working, no
+  adapter needed, confirmed via a full `next build`. This is the path to
+  actually use right now.
+- **Cloudflare Workers** (`@opennextjs/cloudflare`, `wrangler.jsonc`) — a
+  real blocker (the `postgres` driver resolving its Node-only build instead
+  of its Workers-compatible `workerd` build) was found and genuinely fixed.
+  But deploying live to test that fix surfaced a **second, different, still
+  unresolved** issue: roughly half of all requests fail with a database
+  connection error under real Cloudflare production traffic, even though
+  the same connection works 100% of the time from a local script and from
+  Cloudflare's own preview tooling. Root cause not yet confirmed — see
+  `web/README.md`'s "Cloudflare deployment" section for exactly what's been
+  ruled out and what the leading hypothesis is. **Do not use the Cloudflare
+  path yet; use Vercel/Node.**
 
 ## Documentation
 

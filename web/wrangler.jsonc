@@ -10,13 +10,10 @@
   },
   "observability": {
     "enabled": true
-  },
-  // Password hashing (crypto.scrypt) is deliberately CPU-intensive and can
-  // exceed the platform default CPU-time budget on the Workers Free plan.
-  // This raises the ceiling; it requires a Workers Paid plan to take effect
-  // (the Free plan caps at 10ms regardless of this setting) — see
-  // README's "Cloudflare deployment" section.
-  "limits": {
-    "cpu_ms": 50000
   }
+  // No custom `limits.cpu_ms` here: the Workers Free plan rejects deploys
+  // that set it at all (only Paid plans can raise the CPU-time ceiling).
+  // Password hashing (crypto.scrypt) is deliberately CPU-intensive and may
+  // hit the Free plan's fixed 10ms CPU-time cap — see README's "Cloudflare
+  // deployment" section for the actual tested outcome on this account.
 }

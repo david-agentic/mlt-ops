@@ -149,8 +149,50 @@ doesn't "batch statements into one HTTP call" as originally guessed, it
 **throws `"No transactions support in neon-http driver"` outright**. Every
 `db.transaction()` call in `lib/actions/orders.ts` and `lib/actions/users.ts`
 would have broken at runtime, not just changed semantics — a much bigger and
-riskier change than documented here previously. Good thing the Turbopack
-alias fix worked, since it required zero changes to any transactional code.
+riskier change than documented here previously.
+
+### A second, unresolved production issue: intermittent connection failures
+
+The app was actually deployed live (`https://mlt-ops-web.business-portal.workers.dev`,
+account `David-Agentic.Hub`) to test the fix above under real traffic, not
+just a preview. Doing so surfaced a **second, distinct, currently unresolved
+problem**: roughly every other request to `/api/health` fails with
+`{"status":"error","database":"unreachable","error":"Failed query: select 1"}`
+— a real, deterministic ~50% failure rate, not occasional flakiness.
+
+What's been ruled out, with real evidence, not assumption:
+- **Not the Turbopack/workerd fix above** — that's confirmed separately
+  working (this is a new, different failure signature).
+- **Not connection-pool exhaustion** — tried `{ max: 1, idle_timeout: 20 }`
+  and then `{ max: 1, idle_timeout: 1 }` (current setting in `db/index.ts`);
+  identical alternating failure rate both times, so pool sizing isn't it.
+- **Not Neon itself** — a local Node script (`postgres` package, same
+  connection string, same `max: 1, idle_timeout: 1`, same 3-second request
+  spacing) ran 8/8 successful queries directly against the same database
+  outside of Cloudflare entirely. Neon responds correctly and consistently;
+  the ~2.3s per-query latency seen everywhere (local script included) looks
+  like Neon's serverless compute waking from auto-suspend on each new
+  connection, not a failure.
+
+What that leaves: the failure is specific to running the `postgres` package's
+`workerd`/`cloudflare:sockets` build inside actual Cloudflare Workers
+production traffic — something in that build's interaction with the Workers
+runtime (most likely candidate: Workers tears down a request's I/O objects,
+including open sockets, at the end of that request's execution context; if
+the isolate is reused for a later request and any internal state in the
+`cf/src` build's polyfills isn't fully isolated per-request, that could
+produce exactly this kind of alternating corruption) — but this has **not**
+been confirmed the way the items above were; it's the leading hypothesis,
+not a proven root cause. Further narrowing this down means either digging
+into `postgres`'s `cf/src` build internals directly, or doing the disciplined
+comparison this section's other findings were based on (e.g., a minimal
+Worker that only calls `cloudflare:sockets` connect() with no Next.js/OpenNext
+layer in between, to isolate whether OpenNext's request handling is a factor).
+
+**Practical implication:** this repo's Cloudflare deployment is not
+production-ready as-is, despite the build/connectivity blocker above being
+genuinely fixed. The Node/Vercel deployment path remains fully working and
+is the one to actually use until this is resolved.
 
 The other two risks flagged in an earlier pass turned out to be non-issues
 once actually tested:
