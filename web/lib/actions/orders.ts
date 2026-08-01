@@ -12,6 +12,7 @@ import {
   paymentVerifications,
   shipments,
   financeNotes,
+  type OrderStatus,
 } from "@/db/schema";
 import { requireRole } from "@/lib/auth/guard";
 import { saveUpload } from "@/lib/storage";
@@ -352,6 +353,41 @@ export async function addFinanceNote(
   });
 
   revalidatePath(`/finance/orders/${orderId}`);
+}
+
+const CANCELLABLE_STATUSES: OrderStatus[] = [
+  "pending_payment",
+  "payment_submitted",
+  "payment_verified",
+  "packed",
+];
+
+export async function cancelOrder(orderId: string, reason: string) {
+  const admin = await requireRole("admin");
+  if (!reason.trim()) throw new Error("A cancellation reason is required.");
+
+  const order = await getOrderOrThrow(orderId);
+  if (!CANCELLABLE_STATUSES.includes(order.status)) {
+    throw new Error(
+      `Orders that are already ${order.status.replace(/_/g, " ")} can no longer be cancelled.`,
+    );
+  }
+
+  await db.transaction(async (tx) => {
+    await tx
+      .update(orders)
+      .set({ status: "cancelled", updatedAt: new Date() })
+      .where(eq(orders.id, orderId));
+    await tx.insert(financeNotes).values({
+      orderId,
+      authorId: admin.id,
+      type: "note",
+      note: `Order cancelled by ${admin.name}: ${reason}`,
+    });
+  });
+
+  revalidatePath(`/admin/orders/${orderId}`);
+  revalidatePath("/admin/orders");
 }
 
 export async function markDelivered(orderId: string) {

@@ -1,6 +1,6 @@
 import { Badge } from "@/components/ui/badge";
 
-const STATUS_LABEL: Record<string, string> = {
+export const STATUS_LABEL: Record<string, string> = {
   pending_payment: "Pending Payment",
   payment_submitted: "Payment Submitted",
   payment_verified: "Payment Verified",

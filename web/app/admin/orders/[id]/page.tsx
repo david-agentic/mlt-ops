@@ -10,6 +10,7 @@ import {
   paymentProofs,
   paymentVerifications,
   shipments,
+  financeNotes,
   users,
 } from "@/db/schema";
 import { OrderStatusBadge } from "@/components/order-status-badge";
@@ -17,7 +18,17 @@ import { Breadcrumbs } from "@/components/breadcrumbs";
 import { OrderTimeline } from "@/components/orders/order-timeline";
 import { buildOrderTimeline } from "@/lib/orders/timeline";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import { formatMoney, formatDate } from "@/lib/format";
+import { CancelOrderDialog } from "./cancel-order-dialog";
+import { PrintButton } from "./print-button";
+
+const CANCELLABLE_STATUSES = new Set([
+  "pending_payment",
+  "payment_submitted",
+  "payment_verified",
+  "packed",
+]);
 
 export default async function AdminOrderDetailPage({
   params,
@@ -83,6 +94,19 @@ export default async function AdminOrderDetailPage({
     .where(eq(shipments.orderId, id))
     .limit(1);
 
+  const notes = await db
+    .select({
+      id: financeNotes.id,
+      type: financeNotes.type,
+      note: financeNotes.note,
+      createdAt: financeNotes.createdAt,
+      authorName: users.name,
+    })
+    .from(financeNotes)
+    .innerJoin(users, eq(financeNotes.authorId, users.id))
+    .where(eq(financeNotes.orderId, id))
+    .orderBy(desc(financeNotes.createdAt));
+
   const timelineSteps = buildOrderTimeline(order, proof ?? null, verification ?? null, shipment ?? null);
 
   return (
@@ -101,7 +125,15 @@ export default async function AdminOrderDetailPage({
             {order.companyName} · {order.contactName}
           </p>
         </div>
-        <OrderStatusBadge status={order.status} />
+        <div className="flex items-center gap-2">
+          <OrderStatusBadge status={order.status} />
+          <div className="flex gap-2 print:hidden">
+            <PrintButton />
+            {CANCELLABLE_STATUSES.has(order.status) && (
+              <CancelOrderDialog orderId={order.id} />
+            )}
+          </div>
+        </div>
       </div>
 
       <div className="grid gap-4 lg:grid-cols-[280px_1fr]">
@@ -224,6 +256,32 @@ export default async function AdminOrderDetailPage({
               </CardContent>
             </Card>
           )}
+
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-sm">Finance Notes</CardTitle>
+            </CardHeader>
+            <CardContent className="flex flex-col gap-2 text-sm">
+              {notes.length === 0 ? (
+                <p className="text-muted-foreground">No notes on this order yet.</p>
+              ) : (
+                notes.map((n) => (
+                  <div key={n.id} className="rounded-md border border-border p-2">
+                    <div className="mb-1 flex items-center justify-between">
+                      <Badge variant={n.type === "escalate" ? "destructive" : "outline"}>
+                        {n.type}
+                      </Badge>
+                      <span className="text-xs text-muted-foreground">
+                        {formatDate(n.createdAt)}
+                      </span>
+                    </div>
+                    <p>{n.note}</p>
+                    <p className="mt-1 text-xs text-muted-foreground">— {n.authorName}</p>
+                  </div>
+                ))
+              )}
+            </CardContent>
+          </Card>
         </div>
       </div>
     </div>
