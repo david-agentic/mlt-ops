@@ -13,6 +13,7 @@ import {
   users,
 } from "@/db/schema";
 import { OrderStatusBadge } from "@/components/order-status-badge";
+import { Breadcrumbs } from "@/components/breadcrumbs";
 import { OrderTimeline } from "@/components/orders/order-timeline";
 import { buildOrderTimeline } from "@/lib/orders/timeline";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -86,6 +87,13 @@ export default async function AdminOrderDetailPage({
 
   return (
     <div className="flex max-w-5xl flex-col gap-4">
+      <Breadcrumbs
+        items={[
+          { label: "Admin", href: "/admin" },
+          { label: "Orders", href: "/admin/orders" },
+          { label: order.orderNumber },
+        ]}
+      />
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-lg font-semibold">{order.orderNumber}</h1>

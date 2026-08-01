@@ -1,7 +1,8 @@
 "use client";
 
-import { useActionState, useState } from "react";
+import { useActionState, useEffect, useState } from "react";
 import { Plus, Loader2 } from "lucide-react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -51,6 +52,11 @@ function RoleField({ id }: { id: string }) {
 
 function TemporaryPasswordForm() {
   const [state, formAction, pending] = useActionState(createStaffUser, initialState);
+
+  useEffect(() => {
+    if (state?.success) toast.success(state.success);
+  }, [state?.success]);
+
   return (
     <form action={formAction} className="flex flex-col gap-4">
       <div className="flex flex-col gap-1.5">
@@ -91,6 +97,11 @@ function TemporaryPasswordForm() {
 
 function InviteForm() {
   const [state, formAction, pending] = useActionState(inviteStaffUser, initialState);
+
+  useEffect(() => {
+    if (state?.success) toast.success(state.success);
+  }, [state?.success]);
+
   return (
     <form action={formAction} className="flex flex-col gap-4">
       <div className="flex flex-col gap-1.5">

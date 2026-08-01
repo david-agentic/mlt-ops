@@ -1,6 +1,7 @@
 import { desc, eq } from "drizzle-orm";
 import { db } from "@/db";
 import { orders, resellers } from "@/db/schema";
+import { Breadcrumbs } from "@/components/breadcrumbs";
 import { OrdersTable } from "./orders-table";
 
 export default async function AdminOrdersPage() {
@@ -19,6 +20,7 @@ export default async function AdminOrdersPage() {
 
   return (
     <div className="flex flex-col gap-4">
+      <Breadcrumbs items={[{ label: "Admin", href: "/admin" }, { label: "Orders" }]} />
       <h1 className="text-lg font-semibold">Orders</h1>
       <OrdersTable data={rows} />
     </div>

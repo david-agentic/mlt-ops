@@ -6,6 +6,7 @@ import { products } from "@/db/schema";
 import { getProductIntelligence } from "@/lib/analytics/products";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Breadcrumbs } from "@/components/breadcrumbs";
 import { formatMoney } from "@/lib/format";
 
 export default async function ProductIntelligencePage({
@@ -29,6 +30,13 @@ export default async function ProductIntelligencePage({
 
   return (
     <div className="flex max-w-3xl flex-col gap-4">
+      <Breadcrumbs
+        items={[
+          { label: "Admin", href: "/admin" },
+          { label: "Products", href: "/admin/products" },
+          { label: product.name },
+        ]}
+      />
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-xl font-semibold">{product.name}</h1>

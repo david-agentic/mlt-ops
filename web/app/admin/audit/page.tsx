@@ -2,6 +2,7 @@ import { desc, eq } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
 import { db } from "@/db";
 import { auditLog, users } from "@/db/schema";
+import { Breadcrumbs } from "@/components/breadcrumbs";
 import { AuditLogTable } from "./audit-log-table";
 
 const AUDIT_LOG_LIMIT = 200;
@@ -30,6 +31,7 @@ export default async function AdminAuditPage() {
 
   return (
     <div className="flex flex-col gap-4">
+      <Breadcrumbs items={[{ label: "Admin", href: "/admin" }, { label: "Audit Log" }]} />
       <div>
         <h1 className="text-lg font-semibold">Audit Log</h1>
         <p className="text-sm text-muted-foreground">

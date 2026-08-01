@@ -1,7 +1,8 @@
 "use client";
 
-import { useActionState, useState } from "react";
+import { useActionState, useEffect, useState } from "react";
 import { Pencil, Loader2 } from "lucide-react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -38,6 +39,10 @@ export function EditUserDialog({
   const [open, setOpen] = useState(false);
   const action = updateUser.bind(null, userId);
   const [state, formAction, pending] = useActionState(action, initialState);
+
+  useEffect(() => {
+    if (state?.success) toast.success(state.success);
+  }, [state?.success]);
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>

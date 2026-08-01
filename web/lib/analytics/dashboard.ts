@@ -7,6 +7,8 @@ import {
   paymentVerifications,
   shipments,
   products,
+  resellers,
+  type OrderStatus,
 } from "@/db/schema";
 import { getDailyShippingGoal } from "@/lib/actions/settings";
 
@@ -375,6 +377,50 @@ export async function getLiveActivity(limit = 15): Promise<ActivityEvent[]> {
   return events
     .sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime())
     .slice(0, limit);
+}
+
+export async function getAdminKpis() {
+  const [[{ readyToShip }], [{ activeResellers }], [{ lowStockCount }]] = await Promise.all([
+    db
+      .select({ readyToShip: sql<number>`count(*)::int` })
+      .from(orders)
+      .where(eq(orders.status, "payment_verified")),
+    db
+      .select({ activeResellers: sql<number>`count(*)::int` })
+      .from(resellers)
+      .where(eq(resellers.active, true)),
+    db
+      .select({ lowStockCount: sql<number>`count(*)::int` })
+      .from(products)
+      .where(and(eq(products.active, true), lt(products.stockOnHand, LOW_STOCK_THRESHOLD))),
+  ]);
+
+  return { readyToShip, activeResellers, lowStockCount };
+}
+
+export type RecentOrder = {
+  id: string;
+  orderNumber: string;
+  status: OrderStatus;
+  totalAmount: string;
+  createdAt: Date;
+  companyName: string;
+};
+
+export async function getRecentOrders(limit = 8): Promise<RecentOrder[]> {
+  return db
+    .select({
+      id: orders.id,
+      orderNumber: orders.orderNumber,
+      status: orders.status,
+      totalAmount: orders.totalAmount,
+      createdAt: orders.createdAt,
+      companyName: resellers.companyName,
+    })
+    .from(orders)
+    .innerJoin(resellers, eq(orders.resellerId, resellers.id))
+    .orderBy(desc(orders.createdAt))
+    .limit(limit);
 }
 
 export async function getTeamWorkload() {

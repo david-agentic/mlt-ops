@@ -1,8 +1,10 @@
 "use client";
 
+import { Building2 } from "lucide-react";
 import { type ColumnDef } from "@tanstack/react-table";
 import { Badge } from "@/components/ui/badge";
 import { DataTable } from "@/components/data-table";
+import { EmptyState } from "@/components/empty-state";
 import { ToggleActiveButton } from "@/components/toggle-active-button";
 import { ResellerDialog } from "./reseller-dialog";
 import { CreateLoginDialog } from "./create-login-dialog";
@@ -59,6 +61,17 @@ const columns: ColumnDef<Reseller>[] = [
 ];
 
 export function ResellersTable({ data }: { data: Reseller[] }) {
+  if (data.length === 0) {
+    return (
+      <EmptyState
+        icon={Building2}
+        title="No resellers yet"
+        description="Add your first reseller company to start taking B2B orders."
+        action={<ResellerDialog />}
+      />
+    );
+  }
+
   return (
     <DataTable columns={columns} data={data} emptyMessage="No resellers yet." />
   );

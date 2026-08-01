@@ -1,7 +1,10 @@
 import { desc, ne, and, isNull } from "drizzle-orm";
+import { Users } from "lucide-react";
 import { db } from "@/db";
 import { users } from "@/db/schema";
 import { Badge } from "@/components/ui/badge";
+import { Breadcrumbs } from "@/components/breadcrumbs";
+import { EmptyState } from "@/components/empty-state";
 import { ToggleActiveButton } from "@/components/toggle-active-button";
 import { CreateStaffDialog } from "./create-staff-dialog";
 import { ResetPasswordDialog } from "./reset-password-dialog";
@@ -18,6 +21,7 @@ export default async function AdminTeamPage() {
 
   return (
     <div className="flex flex-col gap-4">
+      <Breadcrumbs items={[{ label: "Admin", href: "/admin" }, { label: "Team" }]} />
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-lg font-semibold">Team</h1>
@@ -28,6 +32,14 @@ export default async function AdminTeamPage() {
         <CreateStaffDialog />
       </div>
 
+      {staff.length === 0 ? (
+        <EmptyState
+          icon={Users}
+          title="No team members yet"
+          description="Add your first admin, finance, or shipping login to get started."
+          action={<CreateStaffDialog />}
+        />
+      ) : (
       <div className="overflow-hidden rounded-lg border border-border bg-card">
         <table className="w-full text-sm">
           <thead className="border-b border-border bg-muted/50 text-left">
@@ -86,6 +98,7 @@ export default async function AdminTeamPage() {
           </tbody>
         </table>
       </div>
+      )}
     </div>
   );
 }

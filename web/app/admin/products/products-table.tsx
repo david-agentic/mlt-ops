@@ -1,9 +1,11 @@
 "use client";
 
 import Link from "next/link";
+import { Package } from "lucide-react";
 import { type ColumnDef } from "@tanstack/react-table";
 import { Badge } from "@/components/ui/badge";
 import { DataTable } from "@/components/data-table";
+import { EmptyState } from "@/components/empty-state";
 import { formatMoney } from "@/lib/format";
 import { ProductDialog } from "./product-dialog";
 import { ToggleActiveButton } from "@/components/toggle-active-button";
@@ -73,5 +75,16 @@ const columns: ColumnDef<Product>[] = [
 ];
 
 export function ProductsTable({ data }: { data: Product[] }) {
+  if (data.length === 0) {
+    return (
+      <EmptyState
+        icon={Package}
+        title="No products yet"
+        description="Add your first product to start building your catalog."
+        action={<ProductDialog />}
+      />
+    );
+  }
+
   return <DataTable columns={columns} data={data} emptyMessage="No products yet." />;
 }

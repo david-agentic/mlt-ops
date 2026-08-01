@@ -1,7 +1,9 @@
 "use client";
 
+import { ShieldCheck } from "lucide-react";
 import { type ColumnDef } from "@tanstack/react-table";
 import { DataTable } from "@/components/data-table";
+import { EmptyState } from "@/components/empty-state";
 import { Badge } from "@/components/ui/badge";
 import { formatDate } from "@/lib/format";
 
@@ -97,5 +99,15 @@ const columns: ColumnDef<AuditRow, unknown>[] = [
 ];
 
 export function AuditLogTable({ rows }: { rows: AuditRow[] }) {
+  if (rows.length === 0) {
+    return (
+      <EmptyState
+        icon={ShieldCheck}
+        title="No audit events yet"
+        description="Logins, password changes, and user-management actions will show up here as they happen."
+      />
+    );
+  }
+
   return <DataTable columns={columns} data={rows} emptyMessage="No audit events yet." />;
 }
