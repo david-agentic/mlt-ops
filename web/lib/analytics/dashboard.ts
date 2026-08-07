@@ -67,6 +67,38 @@ export async function getCashExpected(): Promise<number> {
   return Number(total);
 }
 
+export type PipelineStage = {
+  key: OrderStatus;
+  label: string;
+  count: number;
+};
+
+export async function getOrderPipeline(): Promise<PipelineStage[]> {
+  const [row] = await db
+    .select({
+      pendingPayment: sql<number>`count(*) filter (where ${orders.status} = 'pending_payment')::int`,
+      paymentSubmitted: sql<number>`count(*) filter (where ${orders.status} = 'payment_submitted')::int`,
+      paymentVerified: sql<number>`count(*) filter (where ${orders.status} = 'payment_verified')::int`,
+      packed: sql<number>`count(*) filter (where ${orders.status} = 'packed')::int`,
+      shipped: sql<number>`count(*) filter (where ${orders.status} = 'shipped')::int`,
+    })
+    .from(orders);
+
+  const [{ deliveredToday }] = await db
+    .select({ deliveredToday: sql<number>`count(*)::int` })
+    .from(shipments)
+    .where(gte(shipments.deliveredAt, startOfToday()));
+
+  return [
+    { key: "pending_payment", label: "Pending Payment", count: row.pendingPayment },
+    { key: "payment_submitted", label: "Payment Review", count: row.paymentSubmitted },
+    { key: "payment_verified", label: "Ready to Pack", count: row.paymentVerified },
+    { key: "packed", label: "Packed", count: row.packed },
+    { key: "shipped", label: "In Transit", count: row.shipped },
+    { key: "delivered", label: "Delivered Today", count: deliveredToday },
+  ];
+}
+
 export async function getBehindCounts() {
   const [{ financeBehind }] = await db
     .select({ financeBehind: sql<number>`count(distinct ${orders.id})::int` })
