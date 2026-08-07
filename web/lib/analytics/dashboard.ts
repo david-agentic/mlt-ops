@@ -124,6 +124,37 @@ export async function getBehindCounts() {
   return { financeBehind, warehouseBehind };
 }
 
+export type RevenuePoint = { date: string; revenue: number };
+
+/** Daily revenue for the last `days` days, zero-filled for days with no
+ * payments so the chart always has a continuous series. Fetches once for
+ * the widest range (90) — the 7/30/90 toggle then just slices this
+ * client-side instead of round-tripping per selection. */
+export async function getRevenueSeries(days = 90): Promise<RevenuePoint[]> {
+  const start = daysAgo(days - 1);
+  start.setHours(0, 0, 0, 0);
+
+  const rows = await db
+    .select({
+      date: sql<string>`to_char(${paymentVerifications.verifiedAt}, 'YYYY-MM-DD')`,
+      revenue: sql<string>`coalesce(sum(${paymentVerifications.verifiedAmount}), 0)`,
+    })
+    .from(paymentVerifications)
+    .where(gte(paymentVerifications.verifiedAt, start))
+    .groupBy(sql`to_char(${paymentVerifications.verifiedAt}, 'YYYY-MM-DD')`)
+    .orderBy(sql`to_char(${paymentVerifications.verifiedAt}, 'YYYY-MM-DD')`);
+
+  const byDate = new Map(rows.map((r) => [r.date, Number(r.revenue)]));
+
+  const points: RevenuePoint[] = [];
+  for (let i = days - 1; i >= 0; i--) {
+    const d = daysAgo(i);
+    const key = d.toISOString().slice(0, 10);
+    points.push({ date: key, revenue: byDate.get(key) ?? 0 });
+  }
+  return points;
+}
+
 export async function getYesterdayVsPriorDayRevenue() {
   const [{ yesterday }] = await db
     .select({
