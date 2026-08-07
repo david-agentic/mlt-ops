@@ -21,7 +21,7 @@ import {
   getRecentOrders,
   computeBusinessHealth,
 } from "@/lib/analytics/dashboard";
-import { MetricTile } from "@/components/dashboard/metric-tile";
+import { MetricCard } from "@/components/dashboard/metric-card";
 import { UrgentAlerts } from "@/components/dashboard/urgent-alerts";
 import { LiveActivity } from "@/components/dashboard/live-activity";
 import { TeamWorkload } from "@/components/dashboard/team-workload";
@@ -73,50 +73,78 @@ export default async function AdminDashboardPage() {
 
       <UrgentAlerts alerts={alerts} />
 
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
-        <BusinessHealthCard health={health} />
-        <MetricTile label="Revenue Today" value={formatMoney(snapshot.revenueToday)} icon={<Banknote />} tone="success" delay={0.03} />
-        <MetricTile label="Cash Expected" value={formatMoney(cashExpected)} icon={<Wallet />} delay={0.06} />
-        <MetricTile
-          label="Finance Behind"
+      <BusinessHealthCard
+        health={health}
+        alertCount={alerts.length}
+        financeBehind={behind.financeBehind}
+        warehouseBehind={behind.warehouseBehind}
+      />
+
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <MetricCard
+          title="Revenue Today"
+          value={formatMoney(snapshot.revenueToday)}
+          secondary="So far today"
+          icon={<Banknote />}
+          status="success"
+          delay={0.03}
+        />
+        <MetricCard
+          title="Cash Expected"
+          value={formatMoney(cashExpected)}
+          secondary="Awaiting settlement"
+          icon={<Wallet />}
+          delay={0.06}
+        />
+        <MetricCard
+          title="Finance Behind"
           value={`${behind.financeBehind} orders`}
+          secondary={behind.financeBehind > 0 ? "Needs finance review" : "On track"}
           icon={<CircleDollarSign />}
-          tone={behind.financeBehind > 0 ? "warning" : "default"}
+          status={behind.financeBehind > 0 ? "warning" : "success"}
+          href="/admin/orders"
           delay={0.09}
         />
-        <MetricTile
-          label="Warehouse Behind"
+        <MetricCard
+          title="Warehouse Behind"
           value={`${behind.warehouseBehind} orders`}
+          secondary={behind.warehouseBehind > 0 ? "Needs packing" : "On track"}
           icon={<PackageCheck />}
-          tone={behind.warehouseBehind > 0 ? "warning" : "default"}
+          status={behind.warehouseBehind > 0 ? "warning" : "success"}
+          href="/admin/orders"
           delay={0.12}
         />
-      </div>
-
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <MetricTile
-          label="Pending Payment"
+        <MetricCard
+          title="Pending Payment"
           value={`${snapshot.ordersWaiting} orders`}
+          secondary="Awaiting proof of payment"
           icon={<Hourglass />}
+          href="/admin/orders"
           delay={0.15}
         />
-        <MetricTile
-          label="Ready to Ship"
+        <MetricCard
+          title="Ready to Ship"
           value={`${kpis.readyToShip} orders`}
+          secondary="Packed, awaiting courier"
           icon={<Truck />}
+          href="/admin/orders"
           delay={0.18}
         />
-        <MetricTile
-          label="Active Resellers"
+        <MetricCard
+          title="Active Resellers"
           value={`${kpis.activeResellers}`}
+          secondary="Currently active"
           icon={<Building2 />}
+          href="/admin/resellers"
           delay={0.21}
         />
-        <MetricTile
-          label="Low Stock"
+        <MetricCard
+          title="Low Stock"
           value={`${kpis.lowStockCount} products`}
+          secondary={kpis.lowStockCount > 0 ? "Reorder soon" : "All stocked"}
           icon={<PackageX />}
-          tone={kpis.lowStockCount > 0 ? "warning" : "default"}
+          status={kpis.lowStockCount > 0 ? "warning" : "success"}
+          href="/admin/products"
           delay={0.24}
         />
       </div>

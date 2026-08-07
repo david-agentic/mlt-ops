@@ -8,6 +8,7 @@ import {
   ChevronLeft,
   KeyRound,
   LogOut,
+  Menu,
   RefreshCcw,
   Search,
   LayoutDashboard,
@@ -16,6 +17,7 @@ import {
   Building2,
   Users,
   ShieldCheck,
+  X,
   type LucideIcon,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -23,6 +25,7 @@ import { Badge } from "@/components/ui/badge";
 import { ThemeToggle } from "@/components/theme-toggle";
 import {
   Dialog,
+  DialogClose,
   DialogContent,
   DialogHeader,
   DialogTitle,
@@ -58,6 +61,66 @@ export type IconName = keyof typeof ICONS;
 
 export type NavItem = { label: string; href: string; icon: IconName; badge?: number };
 export type NavGroup = { label?: string; items: NavItem[] };
+
+function NavList({
+  navGroups,
+  pathname,
+  collapsed,
+  onNavigate,
+}: {
+  navGroups: NavGroup[];
+  pathname: string;
+  collapsed: boolean;
+  onNavigate?: () => void;
+}) {
+  return (
+    <>
+      {navGroups.map((group, gi) => (
+        <div key={group.label ?? gi} className="flex flex-col gap-0.5">
+          {group.label && !collapsed && (
+            <p className="mb-1 px-2.5 text-caption font-medium tracking-wide text-muted-foreground uppercase">
+              {group.label}
+            </p>
+          )}
+          {group.items.map((item) => {
+            const active = pathname === item.href || pathname.startsWith(item.href + "/");
+            const Icon = ICONS[item.icon];
+            const link = (
+              <Link
+                key={item.href}
+                href={item.href}
+                aria-current={active ? "page" : undefined}
+                onClick={onNavigate}
+                className={cn(
+                  "group flex items-center gap-2.5 rounded-md px-2.5 py-1.5 text-sm font-medium transition-colors",
+                  collapsed && "justify-center px-0",
+                  active
+                    ? "bg-primary text-primary-foreground"
+                    : "text-muted-foreground hover:bg-muted hover:text-foreground",
+                )}
+              >
+                <Icon className="size-4 shrink-0" />
+                {!collapsed && <span className="flex-1 truncate">{item.label}</span>}
+                {!collapsed && item.badge ? (
+                  <Badge variant={active ? "secondary" : "outline"} className="h-4.5 px-1.5">
+                    {item.badge}
+                  </Badge>
+                ) : null}
+              </Link>
+            );
+            if (!collapsed) return link;
+            return (
+              <Tooltip key={item.href}>
+                <TooltipTrigger render={link} />
+                <TooltipContent side="right">{item.label}</TooltipContent>
+              </Tooltip>
+            );
+          })}
+        </div>
+      ))}
+    </>
+  );
+}
 
 const SIDEBAR_COLLAPSE_KEY = "mlt-ops:sidebar-collapsed";
 const SIDEBAR_COLLAPSE_EVENT = "mlt-ops:sidebar-collapse-change";
@@ -97,6 +160,7 @@ export function AppShell({
     getCollapsedServerSnapshot,
   );
   const [searchOpen, setSearchOpen] = useState(false);
+  const [mobileNavOpen, setMobileNavOpen] = useState(false);
 
   useEffect(() => {
     function onKeyDown(e: KeyboardEvent) {
@@ -120,7 +184,7 @@ export function AppShell({
     <div className="flex min-h-screen bg-muted/30">
       <aside
         className={cn(
-          "flex shrink-0 flex-col border-r border-border bg-background transition-[width] duration-200",
+          "hidden shrink-0 flex-col border-r border-border bg-background transition-[width] duration-200 lg:flex",
           collapsed ? "w-[64px]" : "w-[228px]",
         )}
       >
@@ -134,48 +198,7 @@ export function AppShell({
         </div>
 
         <nav className="flex flex-1 flex-col gap-5 overflow-y-auto px-2.5 py-4" aria-label={`${portalLabel} navigation`}>
-          {navGroups.map((group, gi) => (
-            <div key={group.label ?? gi} className="flex flex-col gap-0.5">
-              {group.label && !collapsed && (
-                <p className="mb-1 px-2.5 text-caption font-medium tracking-wide text-muted-foreground uppercase">
-                  {group.label}
-                </p>
-              )}
-              {group.items.map((item) => {
-                const active = pathname === item.href || pathname.startsWith(item.href + "/");
-                const Icon = ICONS[item.icon];
-                const link = (
-                  <Link
-                    key={item.href}
-                    href={item.href}
-                    aria-current={active ? "page" : undefined}
-                    className={cn(
-                      "group flex items-center gap-2.5 rounded-md px-2.5 py-1.5 text-sm font-medium transition-colors",
-                      collapsed && "justify-center px-0",
-                      active
-                        ? "bg-primary text-primary-foreground"
-                        : "text-muted-foreground hover:bg-muted hover:text-foreground",
-                    )}
-                  >
-                    <Icon className="size-4 shrink-0" />
-                    {!collapsed && <span className="flex-1 truncate">{item.label}</span>}
-                    {!collapsed && item.badge ? (
-                      <Badge variant={active ? "secondary" : "outline"} className="h-4.5 px-1.5">
-                        {item.badge}
-                      </Badge>
-                    ) : null}
-                  </Link>
-                );
-                if (!collapsed) return link;
-                return (
-                  <Tooltip key={item.href}>
-                    <TooltipTrigger render={link} />
-                    <TooltipContent side="right">{item.label}</TooltipContent>
-                  </Tooltip>
-                );
-              })}
-            </div>
-          ))}
+          <NavList navGroups={navGroups} pathname={pathname} collapsed={collapsed} />
         </nav>
 
         <div className="border-t border-border p-2.5">
@@ -192,11 +215,51 @@ export function AppShell({
         </div>
       </aside>
 
+      <Dialog open={mobileNavOpen} onOpenChange={setMobileNavOpen}>
+        <DialogContent
+          showCloseButton={false}
+          className="inset-y-0 left-0 top-0 flex h-full w-[260px] max-w-[80vw] -translate-x-0 -translate-y-0 flex-col rounded-none p-0"
+        >
+          <div className="flex h-14 shrink-0 items-center justify-between border-b border-border px-4">
+            <Link href="/" className="flex items-center gap-2 font-semibold tracking-tight" onClick={() => setMobileNavOpen(false)}>
+              <span className="flex size-6 shrink-0 items-center justify-center rounded-md bg-primary text-xs text-primary-foreground">
+                M
+              </span>
+              <span>MLT Ops</span>
+            </Link>
+            <DialogClose
+              render={
+                <Button variant="ghost" size="icon-sm" aria-label="Close menu">
+                  <X className="size-4" />
+                </Button>
+              }
+            />
+          </div>
+          <nav className="flex flex-1 flex-col gap-5 overflow-y-auto px-2.5 py-4" aria-label={`${portalLabel} navigation`}>
+            <NavList
+              navGroups={navGroups}
+              pathname={pathname}
+              collapsed={false}
+              onNavigate={() => setMobileNavOpen(false)}
+            />
+          </nav>
+        </DialogContent>
+      </Dialog>
+
       <div className="flex min-w-0 flex-1 flex-col">
-        <header className="flex h-14 shrink-0 items-center justify-between gap-4 border-b border-border bg-background px-6">
+        <header className="flex h-14 shrink-0 items-center justify-between gap-4 border-b border-border bg-background px-4 sm:px-6">
           <div className="flex items-center gap-3">
+            <Button
+              variant="ghost"
+              size="icon-sm"
+              aria-label="Open menu"
+              className="lg:hidden"
+              onClick={() => setMobileNavOpen(true)}
+            >
+              <Menu className="size-4" />
+            </Button>
             <span className="text-sm font-medium">{portalLabel}</span>
-            <span className="text-caption text-muted-foreground">
+            <span className="hidden text-caption text-muted-foreground sm:inline">
               {new Date().toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short" })}
             </span>
           </div>
