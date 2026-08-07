@@ -1,13 +1,24 @@
 import { requireRole, redirectIfMustChangePassword } from "@/lib/auth/guard";
-import { PortalShell } from "@/components/portal-shell";
+import { AppShell, type NavGroup } from "@/components/app-shell";
+import { getUrgentAlerts } from "@/lib/analytics/dashboard";
 
-const NAV = [
-  { href: "/admin", label: "Dashboard" },
-  { href: "/admin/orders", label: "Orders" },
-  { href: "/admin/products", label: "Products" },
-  { href: "/admin/resellers", label: "Resellers" },
-  { href: "/admin/team", label: "Team" },
-  { href: "/admin/audit", label: "Audit Log" },
+const NAV_GROUPS: NavGroup[] = [
+  {
+    label: "Operations",
+    items: [
+      { href: "/admin", label: "Dashboard", icon: "LayoutDashboard" },
+      { href: "/admin/orders", label: "Orders", icon: "ShoppingCart" },
+      { href: "/admin/products", label: "Products", icon: "Package" },
+      { href: "/admin/resellers", label: "Resellers", icon: "Building2" },
+    ],
+  },
+  {
+    label: "Administration",
+    items: [
+      { href: "/admin/team", label: "Team", icon: "Users" },
+      { href: "/admin/audit", label: "Audit Log", icon: "ShieldCheck" },
+    ],
+  },
 ];
 
 export default async function AdminLayout({
@@ -18,9 +29,16 @@ export default async function AdminLayout({
   const user = await requireRole("admin");
   redirectIfMustChangePassword(user);
 
+  const alerts = await getUrgentAlerts();
+
   return (
-    <PortalShell user={user} title="Admin" nav={NAV}>
+    <AppShell
+      portalLabel="Admin"
+      navGroups={NAV_GROUPS}
+      user={user}
+      notificationCount={alerts.length}
+    >
       {children}
-    </PortalShell>
+    </AppShell>
   );
 }

@@ -46,6 +46,30 @@
   --radius-2xl: calc(var(--radius) * 1.8);
   --radius-3xl: calc(var(--radius) * 2.2);
   --radius-4xl: calc(var(--radius) * 2.6);
+
+  /* Status semantics — separate from --primary/--accent (which stay neutral).
+     Used by Badge variants, dashboard severity pills, KPI trend indicators. */
+  --color-success: var(--success);
+  --color-success-foreground: var(--success-foreground);
+  --color-warning: var(--warning);
+  --color-warning-foreground: var(--warning-foreground);
+  --color-info: var(--info);
+  --color-info-foreground: var(--info-foreground);
+
+  /* Typography roles beyond Tailwind's default scale — for large KPI figures,
+     card/section titles, and uppercase captions/labels used across the
+     dashboard. Existing text-sm/base/lg/etc. usage elsewhere is untouched. */
+  --text-display: 1.75rem;
+  --text-display--line-height: 2.15rem;
+  --text-title: 1.0625rem;
+  --text-title--line-height: 1.5rem;
+  --text-caption: 0.75rem;
+  --text-caption--line-height: 1rem;
+
+  /* One elevation step for "card that can be hovered/emphasized" — replaces
+     ad hoc shadow-sm usage in new dashboard widgets. */
+  --shadow-card: 0 1px 2px rgba(0, 0, 0, 0.04), 0 2px 8px rgba(0, 0, 0, 0.04);
+  --shadow-card-hover: 0 2px 4px rgba(0, 0, 0, 0.06), 0 8px 20px rgba(0, 0, 0, 0.08);
 }
 
 :root {
@@ -73,6 +97,12 @@
   --chart-4: oklch(0.371 0 0);
   --chart-5: oklch(0.269 0 0);
   --radius: 0.625rem;
+  --success: oklch(0.55 0.15 155);
+  --success-foreground: oklch(0.98 0 0);
+  --warning: oklch(0.72 0.16 70);
+  --warning-foreground: oklch(0.2 0.05 70);
+  --info: oklch(0.6 0.15 250);
+  --info-foreground: oklch(0.98 0 0);
   --sidebar: oklch(0.985 0 0);
   --sidebar-foreground: oklch(0.145 0 0);
   --sidebar-primary: oklch(0.205 0 0);
@@ -107,6 +137,12 @@
   --chart-3: oklch(0.439 0 0);
   --chart-4: oklch(0.371 0 0);
   --chart-5: oklch(0.269 0 0);
+  --success: oklch(0.7 0.17 155);
+  --success-foreground: oklch(0.15 0 0);
+  --warning: oklch(0.8 0.16 80);
+  --warning-foreground: oklch(0.15 0.05 80);
+  --info: oklch(0.7 0.16 250);
+  --info-foreground: oklch(0.15 0 0);
   --sidebar: oklch(0.205 0 0);
   --sidebar-foreground: oklch(0.985 0 0);
   --sidebar-primary: oklch(0.488 0.243 264.376);
