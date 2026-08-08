@@ -155,6 +155,62 @@ export async function getRevenueSeries(days = 90): Promise<RevenuePoint[]> {
   return points;
 }
 
+export type OperationalInsights = {
+  avgOrderValue: number;
+  avgFulfillmentHours: number | null;
+  cancellationRatePercent: number;
+  topReseller: { companyName: string; revenue: number } | null;
+};
+
+/** Derived, read-only stats over the last 30 days — no new tables, all
+ * from data already tracked on orders/shipments/resellers. */
+export async function getOperationalInsights(): Promise<OperationalInsights> {
+  const since = daysAgo(30);
+
+  const [{ avgOrderValue }] = await db
+    .select({ avgOrderValue: sql<string>`coalesce(avg(${orders.totalAmount}), 0)` })
+    .from(orders)
+    .where(and(gte(orders.createdAt, since), ne(orders.status, "cancelled")));
+
+  const [{ avgHours, dispatchedCount }] = await db
+    .select({
+      avgHours: sql<string>`coalesce(avg(extract(epoch from (${shipments.dispatchedAt} - ${orders.createdAt})) / 3600), 0)`,
+      dispatchedCount: sql<number>`count(*)::int`,
+    })
+    .from(shipments)
+    .innerJoin(orders, eq(shipments.orderId, orders.id))
+    .where(and(isNotNull(shipments.dispatchedAt), gte(orders.createdAt, since)));
+
+  const [{ total, cancelled }] = await db
+    .select({
+      total: sql<number>`count(*)::int`,
+      cancelled: sql<number>`count(*) filter (where ${orders.status} = 'cancelled')::int`,
+    })
+    .from(orders)
+    .where(gte(orders.createdAt, since));
+
+  const [topReseller] = await db
+    .select({
+      companyName: resellers.companyName,
+      revenue: sql<string>`coalesce(sum(${orders.totalAmount}), 0)`,
+    })
+    .from(orders)
+    .innerJoin(resellers, eq(orders.resellerId, resellers.id))
+    .where(and(gte(orders.createdAt, since), ne(orders.status, "cancelled")))
+    .groupBy(resellers.id, resellers.companyName)
+    .orderBy(desc(sql`sum(${orders.totalAmount})`))
+    .limit(1);
+
+  return {
+    avgOrderValue: Number(avgOrderValue),
+    avgFulfillmentHours: dispatchedCount > 0 ? Number(avgHours) : null,
+    cancellationRatePercent: total > 0 ? Math.round((cancelled / total) * 100) : 0,
+    topReseller: topReseller
+      ? { companyName: topReseller.companyName, revenue: Number(topReseller.revenue) }
+      : null,
+  };
+}
+
 export async function getYesterdayVsPriorDayRevenue() {
   const [{ yesterday }] = await db
     .select({

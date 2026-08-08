@@ -21,11 +21,13 @@ import {
   getRecentOrders,
   getOrderPipeline,
   getRevenueSeries,
+  getOperationalInsights,
   computeBusinessHealth,
 } from "@/lib/analytics/dashboard";
 import { MetricCard } from "@/components/dashboard/metric-card";
 import { OrderPipeline } from "@/components/dashboard/order-pipeline";
 import { RevenueChart } from "@/components/dashboard/revenue-chart";
+import { OperationalInsights } from "@/components/dashboard/operational-insights";
 import { UrgentAlerts } from "@/components/dashboard/urgent-alerts";
 import { LiveActivity } from "@/components/dashboard/live-activity";
 import { TeamWorkload } from "@/components/dashboard/team-workload";
@@ -49,6 +51,7 @@ export default async function AdminDashboardPage() {
     recentOrders,
     pipeline,
     revenueSeries,
+    insights,
   ] = await Promise.all([
     getOperationsSnapshot(),
     getUrgentAlerts(),
@@ -61,6 +64,7 @@ export default async function AdminDashboardPage() {
     getRecentOrders(8),
     getOrderPipeline(),
     getRevenueSeries(90),
+    getOperationalInsights(),
   ]);
 
   const health = computeBusinessHealth(
@@ -160,6 +164,8 @@ export default async function AdminDashboardPage() {
       <OrderPipeline stages={pipeline} />
 
       <RevenueChart points={revenueSeries} />
+
+      <OperationalInsights insights={insights} />
 
       <div className="grid gap-4 lg:grid-cols-2">
         <GoalProgress goal={goalProgress.goal} shippedToday={goalProgress.shippedToday} />
